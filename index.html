@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruleta de Cartas</title>
+<style>
+  :root{
+    --felt-dark:#062218;
+    --felt:#0c3d29;
+    --felt-light:#14512f;
+    --gold:#c9a24b;
+    --gold-bright:#e8c874;
+    --cream:#f2e8d5;
+    --wine:#7a2035;
+    --wine-bright:#a3273b;
+    --shadow: rgba(0,0,0,0.55);
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 50% 20%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
+    font-family: 'Georgia', 'Iowan Old Style', serif;
+    color: var(--cream);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 40px 16px 80px;
+    overflow-x:hidden;
+  }
+
+  .eyebrow{
+    letter-spacing:0.35em;
+    font-size:12px;
+    text-transform:uppercase;
+    color: var(--gold);
+    font-family: Georgia, serif;
+    margin-bottom:6px;
+  }
+
+  h1{
+    font-family: 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+    font-size: clamp(32px, 6vw, 56px);
+    margin: 0 0 6px;
+    text-align:center;
+    color: var(--cream);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    letter-spacing: 0.02em;
+  }
+
+  .subtitle{
+    color: rgba(242,232,213,0.7);
+    font-size:15px;
+    margin-bottom:40px;
+    text-align:center;
+    font-style:italic;
+  }
+
+  .wheel-stage{
+    position:relative;
+    width: min(560px, 90vw);
+    height: min(560px, 90vw);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom: 36px;
+  }
+
+  .pointer{
+    position:absolute;
+    top:-6px;
+    left:50%;
+    transform: translateX(-50%);
+    width:0; height:0;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 30px solid var(--gold-bright);
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6));
+    z-index: 20;
+  }
+  .pointer::after{
+    content:'';
+    position:absolute;
+    top:-32px;
+    left:-9px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background: var(--gold-bright);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .wheel-ring{
+    position:absolute;
+    inset:0;
+    border-radius:50%;
+    background: conic-gradient(from 0deg, var(--gold) 0deg 4deg, transparent 4deg 100%);
+    padding:10px;
+  }
+
+  .wheel{
+    position:relative;
+    width:100%;
+    height:100%;
+    border-radius:50%;
+    border: 10px solid var(--gold);
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,0.6),
+      0 10px 40px var(--shadow);
+    transition: transform 4.5s cubic-bezier(0.12, 0.72, 0.15, 1);
+    background: var(--felt-dark);
+  }
+
+  .wheel-center{
+    position:absolute;
+    top:50%; left:50%;
+    width:64px; height:64px;
+    transform: translate(-50%,-50%);
+    background: radial-gradient(circle at 35% 30%, var(--gold-bright), var(--gold) 60%, #8a6a24 100%);
+    border-radius:50%;
+    z-index:10;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.6), inset 0 0 6px rgba(0,0,0,0.3);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+  }
+
+  .segment{
+    position:absolute;
+    top:0; left:50%;
+    width:2px; height:50%;
+    transform-origin: bottom center;
+  }
+
+  .card-token{
+    position:absolute;
+    top:14%;
+    left:50%;
+    transform: translateX(-50%);
+    width:52px;
+    height:74px;
+    border-radius:6px;
+    background: linear-gradient(160deg, var(--wine-bright), var(--wine) 70%);
+    border: 2px solid var(--gold);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+    overflow:hidden;
+  }
+  .card-token img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  .controls{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+  }
+
+  #spinBtn{
+    font-family: inherit;
+    font-size:18px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:16px 46px;
+    border-radius:40px;
+    border: 2px solid var(--gold);
+    background: linear-gradient(180deg, var(--wine-bright), var(--wine));
+    color: var(--cream);
+    cursor:pointer;
+    box-shadow: 0 6px 0 #4a1120, 0 10px 20px rgba(0,0,0,0.4);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  #spinBtn:active{
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #4a1120, 0 4px 10px rgba(0,0,0,0.4);
+  }
+  #spinBtn:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+    transform:none;
+    box-shadow: 0 6px 0 #4a1120, 0 10px 20px rgba(0,0,0,0.4);
+  }
+
+  .btn-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+
+  .secondary-btn{
+    font-family: inherit;
+    font-size:15px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:13px 28px;
+    border-radius:40px;
+    border: 2px solid var(--gold);
+    background: linear-gradient(180deg, var(--felt-light), var(--felt));
+    color: var(--gold-bright);
+    cursor:pointer;
+    box-shadow: 0 5px 0 #062218, 0 8px 16px rgba(0,0,0,0.35);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  .secondary-btn:active{
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #062218, 0 4px 8px rgba(0,0,0,0.35);
+  }
+  .secondary-btn:disabled{
+    opacity:0.5;
+    cursor:not-allowed;
+  }
+
+  .wheel.shuffling{
+    animation: shuffleWiggle 0.5s ease;
+  }
+  @keyframes shuffleWiggle{
+    0%   { filter: brightness(1); }
+    50%  { filter: brightness(1.35); }
+    100% { filter: brightness(1); }
+  }
+
+  .history-panel{
+    margin-top: 34px;
+    width: min(480px, 92vw);
+    background: rgba(6,34,24,0.6);
+    border: 2px solid var(--gold);
+    border-radius: 14px;
+    padding: 16px 18px 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  .history-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:14px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    color: var(--gold-bright);
+    margin-bottom:10px;
+    padding-bottom:8px;
+    border-bottom: 1px solid rgba(201,162,75,0.35);
+  }
+
+  .clear-btn{
+    font-family: inherit;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    background:none;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding:4px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .clear-btn:hover{
+    background: var(--gold);
+    color: var(--felt-dark);
+  }
+
+  .history-list{
+    list-style:none;
+    margin:0;
+    padding:0 0 8px;
+    max-height: 260px;
+    overflow-y:auto;
+  }
+
+  .history-list::-webkit-scrollbar{ width:8px; }
+  .history-list::-webkit-scrollbar-thumb{ background: var(--gold); border-radius:4px; }
+  .history-list::-webkit-scrollbar-track{ background: transparent; }
+
+  .history-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:8px 4px;
+    border-bottom: 1px dashed rgba(242,232,213,0.15);
+    font-size:14px;
+    animation: slideIn 0.3s ease;
+  }
+  .history-item:last-child{ border-bottom:none; }
+
+  @keyframes slideIn{
+    from{ opacity:0; transform: translateY(-6px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  .history-thumb{
+    width:30px;
+    height:42px;
+    border-radius:4px;
+    overflow:hidden;
+    flex-shrink:0;
+    border: 1px solid var(--gold);
+    background: var(--wine);
+  }
+  .history-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+
+  .history-index{
+    color: rgba(242,232,213,0.5);
+    font-size:12px;
+    width:20px;
+    flex-shrink:0;
+  }
+
+  .history-name{
+    flex:1;
+    color: var(--cream);
+  }
+
+  .history-time{
+    font-size:11px;
+    color: rgba(242,232,213,0.4);
+    flex-shrink:0;
+  }
+
+  .history-empty{
+    text-align:center;
+    color: rgba(242,232,213,0.4);
+    font-style:italic;
+    font-size:14px;
+    padding: 14px 0;
+  }
+
+  .gallery-toggle{
+    margin-top: 28px;
+    font-family: inherit;
+    font-size:15px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:13px 30px;
+    border-radius:40px;
+    border: 2px solid var(--gold);
+    background: transparent;
+    color: var(--gold-bright);
+    cursor:pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .gallery-toggle:hover{
+    background: var(--gold);
+    color: var(--felt-dark);
+  }
+
+  .gallery-section{
+    display:none;
+    width: min(1000px, 94vw);
+    margin-top: 30px;
+  }
+  .gallery-section.show{
+    display:block;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .gallery-title{
+    text-align:center;
+    font-size:22px;
+    color: var(--gold-bright);
+    margin-bottom: 18px;
+    letter-spacing:0.03em;
+  }
+
+  .gallery-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 14px;
+  }
+
+  .gallery-card{
+    position:relative;
+    aspect-ratio: 2 / 2.8;
+    border-radius:8px;
+    overflow:hidden;
+    border: 2px solid var(--gold);
+    cursor:pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    background: var(--wine);
+  }
+  .gallery-card:hover{
+    transform: translateY(-4px) scale(1.04);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  }
+  .gallery-card img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .gallery-card-name{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    padding: 5px 6px 4px;
+    font-size:11px;
+    text-align:center;
+    background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
+    color: var(--cream);
+    line-height:1.2;
+  }
+
+  .hint{
+    font-size:13px;
+    color: rgba(242,232,213,0.55);
+    font-style: italic;
+  }
+
+  /* Modal */
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background: rgba(3,15,10,0.75);
+    backdrop-filter: blur(3px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .modal-backdrop.show{
+    display:flex;
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0;} to{opacity:1;} }
+
+  .modal-card{
+    background: linear-gradient(160deg, #0f4a30, var(--felt-dark));
+    border: 2px solid var(--gold);
+    border-radius: 18px;
+    max-width: 720px;
+    width:100%;
+    padding: 34px 32px 32px;
+    position:relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    text-align:center;
+    animation: pop 0.3s cubic-bezier(0.2,0.9,0.3,1.2);
+  }
+  @keyframes pop{ from{ transform: scale(0.85); opacity:0; } to{ transform: scale(1); opacity:1;} }
+
+  .modal-close{
+    position:absolute;
+    top:12px; right:14px;
+    background:none;
+    border:none;
+    color: var(--gold);
+    font-size:22px;
+    cursor:pointer;
+    line-height:1;
+  }
+
+  .modal-image{
+    width: min(620px, 92vw);
+    height: min(860px, 84vh);
+    margin: 0 auto 20px;
+    border-radius:14px;
+    border: 3px solid var(--gold);
+    overflow:hidden;
+    background: linear-gradient(160deg, var(--wine-bright), var(--wine) 70%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:80px;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.55);
+  }
+  .modal-image img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+  }
+
+  .modal-name{
+    font-size:26px;
+    margin: 0 0 4px;
+    color: var(--gold-bright);
+    letter-spacing:0.02em;
+  }
+
+  .modal-meta{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.15em;
+    color: rgba(242,232,213,0.55);
+    margin-bottom:16px;
+  }
+
+  .modal-desc{
+    font-size:15px;
+    line-height:1.6;
+    color: var(--cream);
+    font-family: Georgia, serif;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .wheel{ transition: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="eyebrow">La ruleta</div>
+  <h1>Ruleta Teamlocke</h1>
+  <p class="subtitle">Gira la rueda y descubre qué carta te espera</p>
+
+  <div class="wheel-stage">
+    <div class="pointer"></div>
+    <div class="wheel-ring">
+      <div class="wheel" id="wheel">
+        <div class="wheel-center">✦</div>
+        <!-- las cartas se insertan aquí por JS -->
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="btn-row">
+      <button id="spinBtn">Girar la ruleta</button>
+      <button id="shuffleBtn" class="secondary-btn" title="Reordena las cartas en la ruleta">🔀 Barajar</button>
+    </div>
+  </div>
+
+  <div class="history-panel" id="historyPanel">
+    <div class="history-header">
+      <span>📜 Registro de esta sesión</span>
+      <button id="clearHistoryBtn" class="clear-btn" title="Vaciar el registro">Vaciar</button>
+    </div>
+    <ol class="history-list" id="historyList">
+      <li class="history-empty">Aún no ha salido ninguna carta.</li>
+    </ol>
+  </div>
+
+  <button id="toggleGalleryBtn" class="gallery-toggle">📚 Ver todas las cartas</button>
+
+  <div class="gallery-section" id="gallerySection">
+    <h2 class="gallery-title">Colección completa</h2>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div class="modal-image" id="modalImage">🂠</div>
+      <h2 class="modal-name" id="modalName">Nombre de la carta</h2>
+    </div>
+  </div>
+
+<script>
+  /* =========================================================
+     DATOS DE LAS CARTAS
+     -----------------------------------------------------------
+     Reemplaza este array con tus 32+ cartas reales.
+     - name: nombre de la carta
+     - category: texto corto (tipo, rareza, elemento...)
+     - desc: descripción / qué hace la carta
+     - image: ruta a tu archivo PNG, ej: "cartas/dragon-de-fuego.png"
+              (si lo dejas vacío se muestra un icono de ejemplo)
+     - icon: emoji de respaldo mientras no subas la imagen real
+  ========================================================= */
+  const cards = [
+    { name: "Caldera", category: "Teamlocke", icon: "🂠", desc: "GUIA: 1c O ME zo. En el gimnasio de Candela mce tanto calor que los\" movimisntos de tipo AGUA no van a tener efecto, te obligará a combiar de pokémon en un muamento crítico del combate y llevarás dos llamesteras equíe padas. 11.", image: "cartas/Caldera.png" },
+    { name: "N", category: "Teamlocke", icon: "🂠", desc: "Y — TAS NATURAL HARMONIA ' . A á A SSA Í como el Ying y el Yang vas a vincular a dos poñré. men del equipo rival sin decíraslo y sí uno cas debl- tado el otro lo hará también además N te propor . clomerÁ un buen suministro de pociones. (+10 obje- tor vos.) po :.", image: "cartas/N.png" },
+    { name: "Antiboosteo", category: "Teamlocke", icon: "🂠", desc: "No puedes chetarte. Al canjear eíta carta el equipo rival no podrá au- mentar sus esiadífticas en todo el capítulo.", image: "cartas/antiboosteo.png" },
+    { name: "Anticura", category: "Teamlocke", icon: "🂠", desc: "Ic nopuedescurár. Al canjear agta carta el equipo rival mo podrá usar el Centro Pokémon durante una ruta. 7.", image: "cartas/anticura.png" },
+    { name: "Antipociones", category: "Teamlocke", icon: "🂠", desc: "No puedes curar. Al canjear aéta carta el equipo rival , pociones durante todo el capítulo.", image: "cartas/antipociones.png" },
+    { name: "Antistab", category: "Teamlocke", icon: "🂠", desc: "o Na O ces I Agh2SIPSTABZ — .l. e 1 -0 Ñ > Y.", image: "cartas/antistab.png" },
+    { name: "Anulacartas", category: "Teamlocke", icon: "🂠", desc: "l ANULA UNA CARTA NN ¡ Aluseresta selec eruter aa. Cama camjectel*equipomivaln AAA mas.", image: "cartas/anulacartas.png" },
+    { name: "Ataqueespecial", category: "Teamlocke", icon: "🂠", desc: "pl e ene”, AREA.", image: "cartas/ataqueespecial.png" },
+    { name: "Balance", category: "Teamlocke", icon: "🂠", desc: "lo el Mire (as cartns de 0 edi y cogio el elo de una de.", image: "cartas/balance.png" },
+    { name: "Bloquea Tipo", category: "Teamlocke", icon: "🂠", desc: "Bi oo 0 Al. NN - BLOQUEAS UN TIPO y VENENO uno ritaaye IS il. O A SINIESTRO ENTE ps in corn UN combo Nr» 0 PAE una oso”) A a EN e so PO OA OE.", image: "cartas/bloquea_tipo.png" },
+    { name: "Bloqueo Dimensional", category: "Teamlocke", icon: "🂠", desc: "Pendiente: añade aquí la descripción/efecto de esta carta.", image: "cartas/bloqueo_dimensional.png" },
+    { name: "Cablelink", category: "Teamlocke", icon: "🂠", desc: "INTERCAMBIO RANDOM ¡ \"Al canjear asta carta se usará automáticamente y. SE YE CLOS Y IEC Y WD E SU e , E. A ds.", image: "cartas/cablelink.png" },
+    { name: "Cancelapociones", category: "Teamlocke", icon: "🂠", desc: "Pierdes una poción. Al canjear afta carta el equipo rival deberá tirar una poción de su inventario.", image: "cartas/cancelapociones.png" },
+    { name: "Candado", category: "Teamlocke", icon: "🂠", desc: "Al canjes afta carta al equipo civel Seendrá un alot l MENOS EN SU EQUÍPO. Y.", image: "cartas/candado.png" },
+    { name: "Capturaextra", category: "Teamlocke", icon: "🂠", desc: "U capturas un pokémon. AL canjear aña carta podría capturar un palímon l estra en la ruta que elijas.", image: "cartas/capturaextra.png" },
+    { name: "Carta Magna", category: "Teamlocke", icon: "🂠", desc: "» : y ) TEAM MAGMA ,-— El poder de Aagno y su Grouden provoca un tarmre. moto en la ruleta con la que recibirás +3 cartas extra para ese copíivilo además de romper una carta aleatoria del rival. á O e, aa, pul.", image: "cartas/carta_magna.png" },
+    { name: "Cartaextra", category: "Teamlocke", icon: "🂠", desc: "A ya — -N p I CANASONAGARÍA. Con esta carta ganarás +2 cartas de cuista durante l ess capítulo. 7.", image: "cartas/cartaextra.png" },
+    { name: "Choiceband", category: "Teamlocke", icon: "🂠", desc: "«CHOÍSBAND y. AMO... AUF ATA Al canganr añ cart dejarte ancarrido a Pain. E pon Ll e . NW».", image: "cartas/choiceband.png" },
+    { name: "Ciego", category: "Teamlocke", icon: "🂠", desc: "CIERReROCK. Al canjear asta carta el equipo rival deberá fugar clego el siguiente conbeabe iméta que ag una e.", image: "cartas/ciego.png" },
+    { name: "Clan Diamante", category: "Teamlocke", icon: "🂠", desc: "Pendiente: añade aquí la descripción/efecto de esta carta.", image: "cartas/clan_diamante.png" },
+    { name: "Corazondeash", category: "Teamlocke", icon: "🂠", desc: "Poder orta amistad. AL canjear efta Cartaval equipo podrá aguantar un Io sin perder a ese polsémon. Paro contaría ln pár.", image: "cartas/corazondeash.png" },
+    { name: "Decido", category: "Teamlocke", icon: "🂠", desc: "gi AR 28 Y é q E - y Ñ : '.", image: "cartas/decido.png" },
+    { name: "Desarme", category: "Teamlocke", icon: "🂠", desc: "esta carta el rival se verá obliga do a tarta todos los ob/ats asus polo de rante el capítulo.", image: "cartas/desarme.png" },
+    { name: "Deseo Oculto", category: "Teamlocke", icon: "🂠", desc: ">. DESED)OCULTO . Al canjear afín carta podrás pedir un dieso a Jira. EI Cu El QUe Ue A.", image: "cartas/deseo_oculto.png" },
+    { name: "Devora Almas", category: "Teamlocke", icon: "🂠", desc: "A A A - AE td aro. A a O > E E CN ; es AN Ze nn” A AO ON a AC 5 a, AMENA. AO.", image: "cartas/devora_almas.png" },
+    { name: "Discal", category: "Teamlocke", icon: "🂠", desc: "a e RITMO L NN Y Discal lisgn para mover el esquelato. Pondrá a. ballar a un Jugador del equipo rival mientras sus polrémon pasen a eftar confundidos durante un combate. ¿demás permetirá robar un polvémon de Ñ (Ip bel nado durante el cpítulo.", image: "cartas/discal.png" },
+    { name: "Ditto", category: "Teamlocke", icon: "🂠", desc: "AA a Al canjear ea carta el equipo rival se verá obliga- . do a utilizar los mismos movimientos que gas. 1.", image: "cartas/ditto.png" },
+    { name: "Dobleequipo", category: "Teamlocke", icon: "🂠", desc: "Dupeación. Al canjear efta carta el equipo podrá duplicar al a.", image: "cartas/dobleequipo.png" },
+    { name: "Ens", category: "Teamlocke", icon: "🂠", desc: "Los ratones mífticos se enfrenten a sus peores enemigos. Ellos mismos. En este gínmasio las muertes valen doble, te vetarán dos.", image: "cartas/ens.png" },
+    { name: "Equipo Ardiente", category: "Teamlocke", icon: "🂠", desc: "Quemado\". Al canjear aéta carta afadirés una Unmestera a , todos los polefmon del equipo rival duramte tado al, - capítulo. A A e.", image: "cartas/equipo_ardiente.png" },
+    { name: "Equipo Toxico", category: "Teamlocke", icon: "🂠", desc: "Envenenado. Al canjear ea carta air una tadenterna capítulo. ys e.", image: "cartas/equipo_toxico.png" },
+    { name: "Escudoreal", category: "Teamlocke", icon: "🂠", desc: "Á MES. IAEA. AAA d an ¿iS S A ERROLEGES 4. ¡Wear EE DRERSS ts toca) Al canjear Er, car ¡rural ig Len IN ita Mil los A una carta del qUIpO MAR, 4 y.", image: "cartas/escudoreal.png" },
+    { name: "Esquema", category: "Teamlocke", icon: "🂠", desc: "Al canjear esta carta podrás aprender un movimien- to que hagan usado en tu contra. z.", image: "cartas/esquema.png" },
+    { name: "Eustaquia", category: "Teamlocke", icon: "🂠", desc: "Gi: 1). Y Exaquio y sus polsémon voladores destiarán uno + de tus movimientos superafectóvos Imcia uno de tus F. IN.", image: "cartas/eustaquia.png" },
+    { name: "Fukuma Mizushi", category: "Teamlocke", icon: "🂠", desc: "(Domáinte (FURTADO MIE A bar ao ers ed os mr de Y dl esa dba, Mr endo palas rd dbz o e del. Ps PTE f e O O.", image: "cartas/fukuma_mizushi.png" },
+    { name: "Furia Infantil", category: "Teamlocke", icon: "🂠", desc: "IY Y AE D pur o S ¿PRIMERA ETAPA . + Íanos las vin a faltar a dos entrenadores parque.", image: "cartas/furia_infantil.png" },
+    { name: "Galaxia Omega", category: "Teamlocke", icon: "🂠", desc: "¡FIRMA OMEGA . --\"ar Camjenr asta carta el equipo recibirá un poteé. O O A 0 e \", e - SN AN ES AF ps > : CAE).", image: "cartas/galaxia_omega.png" },
+    { name: "Giovanni", category: "Teamlocke", icon: "🂠", desc: "Dor O o N “(ELIGE CARTA\" NN Y Í etovanni es el antagonifta por enceléncia: Gracias. a su carta podrás elegir Un carta que más desees para ese capitulo. Lo. 4 pd Á a — h.", image: "cartas/giovanni.png" },
+    { name: "Helllll Nahhhh", category: "Teamlocke", icon: "🂠", desc: "Pendiente: añade aquí la descripción/efecto de esta carta.", image: "cartas/helllll_nahhhh.png" },
+    { name: "Jaquematiev", category: "Teamlocke", icon: "🂠", desc: "sAQUEMATIEV Ñ QA. a) tie aguanta porque es un Maliey y decide amíqui. ' ura al Útlimo usado primer pacman y que lagas.", image: "cartas/jaquematiev.png" },
+    { name: "Josefina", category: "Teamlocke", icon: "🂠", desc: "l o — FURASICA.", image: "cartas/josefina.png" },
+    { name: "Joseluis", category: "Teamlocke", icon: "🂠", desc: "Ja —. -/ -wenda * man iq. 7 Joss Lu y su arcoiris te War Llenar in cara de bodas colores posibles, (A panda mesme cacos yn podéis poneros a rez11 porque no podía utilizar movimientos en frenY w.", image: "cartas/joseluis.png" },
+    { name: "Katateka", category: "Teamlocke", icon: "🂠", desc: "Ataque físico >. Al Canfenr afta carta el equipo rival solo podrá usar Ñ movimientos de daño físico. y. ll.", image: "cartas/katateka.png" },
+    { name: "Kratos", category: "Teamlocke", icon: "🂠", desc: "Gd: an). ados hn Ulagado con la furía de los diosas. Su poder es tal que te impide atacar de forma supere- fectiva hasta que no se haga robado un alma duram- pa iS i A . /.", image: "cartas/kratos.png" },
+    { name: "Kyoka Suigetsu", category: "Teamlocke", icon: "🂠", desc: "vil ra un orto y € plz qua es il, el aforo UA e rubrta y dl tl dl ho pad variada de exurs el lato y doeeránoos ua arrás alardanto. a ,? GU) CS.", image: "cartas/kyoka_suigetsu.png" },
+    { name: "Ladron", category: "Teamlocke", icon: "🂠", desc: "Robas un pokémon. Al canjear afín.", image: "cartas/ladron.png" },
+    { name: "Lionel", category: "Teamlocke", icon: "🂠", desc: "Ú — CA. DA %: ESPIRITUNCAMPEÓN ' HO cc e cd) Í 5omel Vega con su ens iplaftante: El campeón sl. de Glar de cÍvOce una prORiCción Trento a quel” Y quier carta y bo csdsrá sy energía dinames: para po- ) y tenciar a Ue de tus Paltámon. a Is pr > eS > S> a . - ho —. + : V és.", image: "cartas/lionel.png" },
+    { name: "Majestad Escanor", category: "Teamlocke", icon: "🂠", desc: "¡== Wi. A Ú A y)» ¡YO L.", image: "cartas/majestad_escanor_.png" },
+    { name: "Masuda", category: "Teamlocke", icon: "🂠", desc: "(recorte de pokedex. Desde una galecda muy isjana Ulsga Masuda que con todo el tema de encar el juego a Tiempo va a recor- : tar a tu equipo por la mitad perdiendo 3 cuerpos. S e — l ”.", image: "cartas/masuda.png" },
+    { name: "Megaboost", category: "Teamlocke", icon: "🂠", desc: "Ta chetarse. l las estadísticas de uno de tus polémon. A A.", image: "cartas/megaboost.png" },
+    { name: "Mismodestino", category: "Teamlocke", icon: "🂠", desc: "Ic menereoamigoz. Al canjear esta carta en el Mamerto en el que Un pokémon se debilite arrafirará a la tumba al poltf> men del equipo rival que luche en est momento.", image: "cartas/mismodestino.png" },
+    { name: "Mododaruma", category: "Teamlocke", icon: "🂠", desc: "comBrErO. Al camjeer agita carta el equipo rival deberá selec clonar el modo de combate fijo durante un capítulo.", image: "cartas/mododaruma.png" },
+    { name: "Monotype", category: "Teamlocke", icon: "🂠", desc: "159.mismo tipa. 2) >? == Y... — > oo.! A, O.", image: "cartas/monotype.png" },
+    { name: "Multi Perla", category: "Teamlocke", icon: "🂠", desc: "mE : Y, “. eN 0 : We ¡yl O CO AMO.", image: "cartas/multi_perla.png" },
+    { name: "Muryokusho", category: "Teamlocke", icon: "🂠", desc: "Pd ñ d (Dominio, Mur diia ) y Tes meras sun borrados de la adria, Y etapas ss its Lor ddr es ru 2 TR. A O > o, 2.", image: "cartas/muryokusho.png" },
+    { name: "Nada", category: "Teamlocke", icon: "🂠", desc: "Pendiente: añade aquí la descripción/efecto de esta carta.", image: "cartas/nada.png" },
+    { name: "Ninja", category: "Teamlocke", icon: "🂠", desc: "Al canjear afin Carta podrás descubre bra cartes del equipo rival y volver a rar: Y.", image: "cartas/ninja.png" },
+    { name: "Paco", category: "Teamlocke", icon: "🂠", desc: "Wey). PEO y sus polrémon van hasta arriba de aftarotdes y,t5 obligarán a descansar durante un tuno en mitad del combate, además de no permitirte Fo.", image: "cartas/paco.png" },
+    { name: "Padre Ausente", category: "Teamlocke", icon: "🂠", desc: "e. ai. o E — GIL.). En aíte combate uno de tus polsémon se frá a por tabaco decidido per Alem volumen 10 y no se.", image: "cartas/padre_ausente.png" },
+    { name: "Palmas", category: "Teamlocke", icon: "🂠", desc: "Cc lapalmas. Desde las tinieblas aparsce el polvímon tensbruso que se llevará con él a la tumba a un palsímon del equipo rival de manera alsatorín.", image: "cartas/palmas.png" },
+    { name: "Paradoja Futuro", category: "Teamlocke", icon: "🂠", desc: "Carta deleuturo. Al canjear agta carta podrás tífar otra Vez y la — - carta que toque la vssrás en ese capiiulo y el sí- guiente como el Uraras ln ruista en el futuro. Y *.", image: "cartas/paradoja_futuro.png" },
+    { name: "Paradoja Pasada", category: "Teamlocke", icon: "🂠", desc: "Recuperas una carzaa!. 'Í.. aL canjear asta carta podrás recuperar una carta utiltzada en el capítulo anterior para utilizaría. W ar YN , A.", image: "cartas/paradoja_pasada.png" },
+    { name: "Pocion Extra", category: "Teamlocke", icon: "🂠", desc: "Ganasuna poción.", image: "cartas/pocion_extra.png" },
+    { name: "Pokemon Random", category: "Teamlocke", icon: "🂠", desc: "( GANAS UN POKEMON RANDOM / DN cenfeer esto care el equipo UNA an lts mear lares, serra rol la. A pe DIS DUI IASAIUDO SAS LAS NO o o ; ——————— I.", image: "cartas/pokemon_random.png" },
+    { name: "Poseidon", category: "Teamlocke", icon: "🂠", desc: "5 A N N E 2% TEAM AQUA. a. k equipo rival pierda todas sus cartas y solo podrás robar un pokémon dé UipO \"agua de cualquier.", image: "cartas/poseidon.png" },
+    { name: "Profanatumbas", category: "Teamlocke", icon: "🂠", desc: "Robas un alma. > — .- -1 ' Vasa Úr directo a profanar el PE del equipo rival : ,» del cual podrás robar el poltémon que quieras. Ya luego lo que hingas con dl es cosa tum.", image: "cartas/profanatumbas.png" },
+    { name: "Profesor Oak", category: "Teamlocke", icon: "🂠", desc: "” CABORATORIO,OA El Prol YOsk tiene tal conocimiento que Ue peimido. rá elegi un inicial y ponerie la habilidad que quie- Pos admitido parmitirte cbsarvu Jos púliman cap burabias de la prósdma cuta y elsgicios antes de VID od, MJ ma, Y 4 Who => Y.", image: "cartas/profesor_oak.png" },
+    { name: "Quitamovimientos", category: "Teamlocke", icon: "🂠", desc: "Quitamovimientos. Despídete de ese movimiento chetado porque al canjear esta carta podrás quitar un movimiento de cualquier pelémeon al equipo rival y no podrá volver a recordario.", image: "cartas/quitamovimientos.png" },
+    { name: "Randomiento", category: "Teamlocke", icon: "🂠", desc: "Movimiento random. Al canjear afta carta el equipo rival deberá utilizar un merimiento alentario.", image: "cartas/randomiento.png" },
+    { name: "Reviertefectos", category: "Teamlocke", icon: "🂠", desc: "Il SELADEVUELVES. Al canjear esta carta revectirás el afecto de la carta que lmos el equipo rival siempre que no sen de categoría legendaria ní carta especial.", image: "cartas/reviertefectos.png" },
+    { name: "Ribombeeeee", category: "Teamlocke", icon: "🂠", desc: "E AT A mulfulaaos desta tado el eombats.", image: "cartas/ribombeeeee.png" },
+    { name: "Rinne Sharingan", category: "Teamlocke", icon: "🂠", desc: "VSTAR Power PO. Esta cart dlene ptoctdod alta y anarbian 08 CLA O YN o) ua coran entra.", image: "cartas/rinne-sharingan.png" },
+    { name: "Rivalidad", category: "Teamlocke", icon: "🂠", desc: "Cuestión de sexos. l al esta carta los del civall da atacar a Dobles qu aten dels opustto durante todo el capítulo. y4.", image: "cartas/rivalidad.png" },
+    { name: "Robacartas", category: "Teamlocke", icon: "🂠", desc: "Ic robastangaría. = Sa > Y —— Al canjear eíta carta podrás robar una carta a , ciegas del equipo rival.", image: "cartas/robacartas.png" },
+    { name: "Robaruta", category: "Teamlocke", icon: "🂠", desc: "\"ese poké 9 \"¿ese pokémon es mío ++. l Al más puro estilo Florentino por las falbaias de — Erasl podrás robar uno de los polsímon salvajes que sírape el equipo rival en ese capítulo.", image: "cartas/robaruta.png" },
+    { name: "Sinestado", category: "Teamlocke", icon: "🂠", desc: "Estados 4. Al canjear efta carta el equipo rival no podrá usar morinientos de cótado. 1.", image: "cartas/sinestado.png" },
+    { name: "Sinruta", category: "Teamlocke", icon: "🂠", desc: "No puedes capturar. Al comjear cáta carta el equipo rival no podrá caplu- rar en la siguiente cuta.", image: "cartas/sinruta.png" },
+    { name: "Skibidi Runic", category: "Teamlocke", icon: "🂠", desc: "E) ANT Random Cesshíta el Random Gal jerga derare un cagótulo Y ea. y YE DD ARUO cu caza o” un.", image: "cartas/skibidi_runic.png" },
+    { name: "Sombratrampa", category: "Teamlocke", icon: "🂠", desc: "Al canjear eíta carta el pokémon del equipo rival no podrá ser retirado manualmente hasta que caígn debilitado o termine el combate. :.", image: "cartas/sombratrampa.png" },
+    { name: "Tarjeta Roja", category: "Teamlocke", icon: "🂠", desc: "Pokemininetado. Al canjear aftn carta el squipo rival se verá obliga- l do a cambiar de polémon durante el combate.", image: "cartas/tarjeta_roja.png" },
+    { name: "Teamrocket", category: "Teamlocke", icon: "🂠", desc: "U larobadera. Ta O: 7 SU Y Mo y El Team Rochat ataca de muevo y de permito robar un pelrémon de cualquier entrenador; ya sen der TA > : 5.", image: "cartas/teamrocket.png" },
+    { name: "Tempus", category: "Teamlocke", icon: "🂠", desc: "¡ ENGRANAJE del TIEMPO -- “El empo es la clave de todo y por eso al canjear. E CUA PUTAS AIN MULENEITOS Y OCUPE - Un polsémon que lwgas usado en amberiores amentu- - e (Legandarios no tncluídos) Y A.", image: "cartas/tempus.png" },
+    { name: "Toliet Runic", category: "Teamlocke", icon: "🂠", desc: "SUS ES SU LU SY LS O) AntiiRandom.", image: "cartas/toliet_runic.png" },
+    { name: "Turbonerfeo", category: "Teamlocke", icon: "🂠", desc: "Ic canerfénda 6. Al canjear egin carta Un polsémon del equipo rival , SP obligado a recudír sus Vs a O, meluralezn nsutra y va a obtener la habilidad Aussmts. Ú.", image: "cartas/turbonerfeo.png" },
+    { name: "Vetado", category: "Teamlocke", icon: "🂠", desc: "I vetas inpokemon. AL canjear efta Cartaval equipo rival dabará mandar al polsámon elegido al PE durante todo el capítulo. l.", image: "cartas/vetado.png" },
+    { name: "Vetapoke", category: "Teamlocke", icon: "🂠", desc: "Pokemon vetado. Al canjear agta carta el equipo rival.", image: "cartas/vetapoke.png" },
+  ];
+
+  const wheel = document.getElementById('wheel');
+  const spinBtn = document.getElementById('spinBtn');
+  const shuffleBtn = document.getElementById('shuffleBtn');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const historyList = document.getElementById('historyList');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+  const modalClose = document.getElementById('modalClose');
+  const modalImage = document.getElementById('modalImage');
+  const modalName = document.getElementById('modalName');
+  const toggleGalleryBtn = document.getElementById('toggleGalleryBtn');
+  const gallerySection = document.getElementById('gallerySection');
+  const galleryGrid = document.getElementById('galleryGrid');
+
+  const total = cards.length;
+  const segmentAngle = 360 / total;
+  let currentRotation = 0;
+  let spinning = false;
+
+  // Registro temporal de la sesión: vive solo en memoria, se borra al recargar la página
+  let history = [];
+
+  // Construir los tokens de carta alrededor de la rueda
+  function buildWheel(){
+    cards.forEach((card, i) => {
+      const angle = segmentAngle * i;
+      const seg = document.createElement('div');
+      seg.className = 'segment';
+      seg.style.transform = `rotate(${angle}deg)`;
+
+      const token = document.createElement('div');
+      token.className = 'card-token';
+      // contrarrota para que la carta se vea "de pie"
+      token.style.transform = `translateX(-50%) rotate(${-angle}deg)`;
+
+      if (card.image) {
+        const img = document.createElement('img');
+        img.src = card.image;
+        img.alt = card.name;
+        token.appendChild(img);
+      } else {
+        token.textContent = card.icon || '🂠';
+      }
+
+      seg.appendChild(token);
+      wheel.appendChild(seg);
+    });
+  }
+
+  function spin(){
+    if (spinning) return;
+    spinning = true;
+    spinBtn.disabled = true;
+
+    const targetIndex = Math.floor(Math.random() * total);
+    const fullSpins = 6; // vueltas completas antes de frenar
+    // Queremos que el CENTRO del segmento objetivo quede bajo el puntero (arriba, 0deg)
+    const targetSegmentCenter = targetIndex * segmentAngle + segmentAngle / 2;
+    // Rotamos la rueda de forma que ese ángulo llegue a 0deg (arriba)
+    const normalizedCurrent = currentRotation % 360;
+    const delta = (360 - targetSegmentCenter) - (normalizedCurrent % 360);
+    const finalRotation = currentRotation + fullSpins * 360 + ((delta + 360) % 360);
+
+    currentRotation = finalRotation;
+    wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+    setTimeout(() => {
+      spinning = false;
+      spinBtn.disabled = false;
+      showCard(cards[targetIndex]);
+      addToHistory(cards[targetIndex]);
+    }, 4600);
+  }
+
+  function showCard(card){
+    modalName.textContent = card.name;
+    modalImage.innerHTML = '';
+    if (card.image) {
+      const img = document.createElement('img');
+      img.src = card.image;
+      img.alt = card.name;
+      modalImage.appendChild(img);
+    } else {
+      modalImage.textContent = card.icon || '🂠';
+    }
+    modalBackdrop.classList.add('show');
+  }
+
+  function closeModal(){
+    modalBackdrop.classList.remove('show');
+  }
+
+  // Construye la cuadrícula de la colección completa (se puede clicar cada carta)
+  function buildGallery(){
+    galleryGrid.innerHTML = '';
+    cards.forEach(card => {
+      const item = document.createElement('div');
+      item.className = 'gallery-card';
+
+      if (card.image) {
+        const img = document.createElement('img');
+        img.src = card.image;
+        img.alt = card.name;
+        item.appendChild(img);
+      }
+
+      const label = document.createElement('div');
+      label.className = 'gallery-card-name';
+      label.textContent = card.name;
+      item.appendChild(label);
+
+      item.addEventListener('click', () => showCard(card));
+      galleryGrid.appendChild(item);
+    });
+  }
+
+  toggleGalleryBtn.addEventListener('click', () => {
+    const isShown = gallerySection.classList.toggle('show');
+    toggleGalleryBtn.textContent = isShown ? '🎴 Ocultar cartas' : '📚 Ver todas las cartas';
+    if (isShown) {
+      gallerySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  // Baraja el orden de las cartas en el array (Fisher-Yates) y reconstruye la rueda
+  function shuffleCards(){
+    if (spinning) return;
+    for (let i = cards.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cards[i], cards[j]] = [cards[j], cards[i]];
+    }
+    // limpiar los tokens actuales (dejando el centro de la rueda)
+    wheel.querySelectorAll('.segment').forEach(seg => seg.remove());
+    buildWheel();
+
+    // pequeño efecto visual para que se note el barajeo
+    wheel.classList.remove('shuffling');
+    void wheel.offsetWidth; // reinicia la animación
+    wheel.classList.add('shuffling');
+  }
+
+  function addToHistory(card){
+    const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    history.unshift({ ...card, time });
+    renderHistory();
+  }
+
+  function renderHistory(){
+    if (history.length === 0) {
+      historyList.innerHTML = '<li class="history-empty">Aún no ha salido ninguna carta.</li>';
+      return;
+    }
+    historyList.innerHTML = history.map((entry, i) => {
+      const num = history.length - i;
+      const thumb = entry.image
+        ? `<img src="${entry.image}" alt="${entry.name}">`
+        : (entry.icon || '🂠');
+      return `
+        <li class="history-item">
+          <span class="history-index">#${num}</span>
+          <span class="history-thumb">${thumb}</span>
+          <span class="history-name">${entry.name}</span>
+          <span class="history-time">${entry.time}</span>
+        </li>`;
+    }).join('');
+  }
+
+  function clearHistory(){
+    history = [];
+    renderHistory();
+  }
+
+  clearHistoryBtn.addEventListener('click', clearHistory);
+
+  spinBtn.addEventListener('click', spin);
+  shuffleBtn.addEventListener('click', shuffleCards);
+  modalClose.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+
+  buildWheel();
+  buildGallery();
+</script>
+
+</body>
+</html>
