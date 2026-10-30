@@ -333,7 +333,25 @@
     cursor:pointer;
     transition: background 0.15s ease, color 0.15s ease;
   }
-  .clear-btn:hover{
+  .clear-btn:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+  .history-actions{
+    display:flex;
+    gap:8px;
+  }
+
+  .confetti{
+    position:fixed;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:150;
+  }
+
+  .clear-btn:not(:disabled):hover{
     background: var(--gold);
     color: var(--felt-dark);
   }
@@ -669,7 +687,10 @@
   <div class="history-panel" id="historyPanel">
     <div class="history-header">
       <span>📜 Registro de esta sesión <span id="historyCount"></span></span>
-      <button id="clearHistoryBtn" class="clear-btn" type="button" title="Vaciar el registro">Vaciar</button>
+      <span class="history-actions">
+        <button id="copyHistoryBtn" class="clear-btn" type="button" title="Copiar el registro para pegarlo en Discord o WhatsApp" disabled>Copiar</button>
+        <button id="clearHistoryBtn" class="clear-btn" type="button" title="Vaciar el registro">Vaciar</button>
+      </span>
     </div>
     <ol class="history-list" id="historyList">
       <li class="history-empty">Aún no ha salido ninguna carta.</li>
@@ -825,6 +846,7 @@
   const gallerySearch = $('gallerySearch');
   const galleryCount = $('galleryCount');
   const announcer = $('announcer');
+  const copyHistoryBtn = $('copyHistoryBtn');
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const SPIN_MS = reducedMotion ? 600 : 5200;
@@ -1016,6 +1038,7 @@
     addToHistory(card);
     drawn.add(card.name);
     fanfare();
+    confetti();
     showCard(card, true);
     announcer.textContent = `Te ha tocado: ${card.name}`;
     refreshAfterChange();
@@ -1079,6 +1102,7 @@
 
   function renderHistory(){
     historyCount.textContent = history.length ? `(${history.length})` : '';
+    copyHistoryBtn.disabled = history.length === 0;
     historyList.innerHTML = '';
     if (history.length === 0) {
       historyList.innerHTML = '<li class="history-empty">Aún no ha salido ninguna carta.</li>';
@@ -1106,6 +1130,69 @@
   function clearHistory(){
     history = [];
     renderHistory();
+  }
+
+  // Copia el registro como texto, del más antiguo al más reciente
+  async function copyHistory(){
+    const lines = [...history].reverse().map((entry, i) =>
+      `${i + 1}. ${entry.time} — ${entry.name}`);
+    const text = `🎴 Ruleta Skibidi\n${lines.join('\n')}`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const area = document.createElement('textarea');
+      area.value = text;
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand('copy');
+      area.remove();
+    }
+    copyHistoryBtn.textContent = '¡Copiado!';
+    setTimeout(() => { copyHistoryBtn.textContent = 'Copiar'; }, 1600);
+  }
+
+  /* ---------- Confeti ---------- */
+  function confetti(){
+    if (reducedMotion) return;
+    const layer = document.createElement('canvas');
+    layer.className = 'confetti';
+    document.body.appendChild(layer);
+    const c = layer.getContext('2d');
+    const w = layer.width = window.innerWidth;
+    const h = layer.height = window.innerHeight;
+    const colors = ['#e8c874', '#c9a24b', '#f2e8d5', '#a3273b', '#14512f'];
+    const pieces = Array.from({ length: 140 }, () => ({
+      x: w / 2 + (Math.random() - 0.5) * w * 0.3,
+      y: h * 0.35,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -Math.random() * 13 - 4,
+      size: 5 + Math.random() * 6,
+      rot: Math.random() * Math.PI,
+      spin: (Math.random() - 0.5) * 0.3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const t0 = performance.now();
+    function frame(now){
+      const t = now - t0;
+      c.clearRect(0, 0, w, h);
+      c.globalAlpha = Math.max(0, 1 - t / 2200);
+      pieces.forEach(p => {
+        p.vy += 0.32;
+        p.vx *= 0.99;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.spin;
+        c.save();
+        c.translate(p.x, p.y);
+        c.rotate(p.rot);
+        c.fillStyle = p.color;
+        c.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        c.restore();
+      });
+      if (t < 2200) requestAnimationFrame(frame);
+      else layer.remove();
+    }
+    requestAnimationFrame(frame);
   }
 
   /* ---------- Estado de la baraja ---------- */
@@ -1206,6 +1293,7 @@
   wheelEl.addEventListener('click', spin);
   shuffleBtn.addEventListener('click', shuffleCards);
   clearHistoryBtn.addEventListener('click', clearHistory);
+  copyHistoryBtn.addEventListener('click', copyHistory);
   modalClose.addEventListener('click', () => closeModal());
   modalBackdrop.addEventListener('click', (e) => {
     if (e.target === modalBackdrop) closeModal();

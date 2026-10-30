@@ -8,7 +8,7 @@ Ruleta de cartas para el Teamlocke de Pokémon: gira la rueda y descubre qué ca
 - Modo **sin repetir**: las cartas que ya han salido se quitan de la ruleta hasta que las devuelvas.
 - Botón para barajar el orden de la ruleta.
 - Sonido opcional al girar; la preferencia se guarda en el navegador.
-- Registro de las cartas que han salido en la sesión (se borra al recargar).
+- Registro de las cartas que han salido en la sesión (se borra al recargar). Se puede **copiar** como texto para pegarlo en Discord o WhatsApp.
 - Galería con todas las cartas y buscador.
 - Atajos: `Espacio` para girar y `Esc` para cerrar la carta.
 
