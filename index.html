@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ruleta de Cartas</title>
+<title>Ruleta Skibidi</title>
+<meta name="description" content="Ruleta de cartas para el Teamlocke: gira la rueda y descubre qué carta te toca.">
+<meta property="og:title" content="Ruleta Skibidi">
+<meta property="og:description" content="Gira la ruleta del Teamlocke y descubre qué carta te toca.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0c3d29">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>">
 <style>
   :root{
     --felt-dark:#062218;
@@ -12,6 +18,7 @@
     --gold:#c9a24b;
     --gold-bright:#e8c874;
     --cream:#f2e8d5;
+    --cream-muted:#b5b09c; /* texto secundario, contraste ≥ 4.5:1 sobre el tapete */
     --wine:#7a2035;
     --wine-bright:#a3273b;
     --shadow: rgba(0,0,0,0.55);
@@ -19,11 +26,14 @@
 
   *{ box-sizing:border-box; }
 
+  [hidden]{ display:none !important; }
+
   body{
     margin:0;
     min-height:100vh;
     background:
       radial-gradient(circle at 50% 20%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
+    background-attachment: fixed;
     font-family: 'Georgia', 'Iowan Old Style', serif;
     color: var(--cream);
     display:flex;
@@ -32,14 +42,13 @@
     padding: 40px 16px 80px;
     overflow-x:hidden;
   }
+  body.modal-open{ overflow:hidden; }
 
-  .eyebrow{
-    letter-spacing:0.35em;
-    font-size:12px;
-    text-transform:uppercase;
-    color: var(--gold);
-    font-family: Georgia, serif;
-    margin-bottom:6px;
+  button{ font-family: inherit; }
+
+  :focus-visible{
+    outline: 3px solid var(--gold-bright);
+    outline-offset: 3px;
   }
 
   h1{
@@ -55,19 +64,17 @@
   .subtitle{
     color: rgba(242,232,213,0.7);
     font-size:15px;
-    margin-bottom:40px;
+    margin: 0 0 32px;
     text-align:center;
     font-style:italic;
   }
 
+  /* ---------- Ruleta ---------- */
   .wheel-stage{
     position:relative;
     width: min(560px, 90vw);
-    height: min(560px, 90vw);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin-bottom: 36px;
+    aspect-ratio: 1;
+    margin-bottom: 18px;
   }
 
   .pointer{
@@ -81,6 +88,7 @@
     border-top: 30px solid var(--gold-bright);
     filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6));
     z-index: 20;
+    transform-origin: 50% 0;
   }
   .pointer::after{
     content:'';
@@ -93,26 +101,29 @@
     background: var(--gold-bright);
     box-shadow: 0 2px 4px rgba(0,0,0,0.5);
   }
-
-  .wheel-ring{
-    position:absolute;
-    inset:0;
-    border-radius:50%;
-    background: conic-gradient(from 0deg, var(--gold) 0deg 4deg, transparent 4deg 100%);
-    padding:10px;
+  .pointer.tick{ animation: tick 0.12s ease-out; }
+  @keyframes tick{
+    0%{ transform: translateX(-50%) rotate(0deg); }
+    40%{ transform: translateX(-50%) rotate(-14deg); }
+    100%{ transform: translateX(-50%) rotate(0deg); }
   }
 
   .wheel{
-    position:relative;
-    width:100%;
-    height:100%;
+    position:absolute;
+    inset:0;
     border-radius:50%;
     border: 10px solid var(--gold);
     box-shadow:
       inset 0 0 40px rgba(0,0,0,0.6),
       0 10px 40px var(--shadow);
-    transition: transform 4.5s cubic-bezier(0.12, 0.72, 0.15, 1);
     background: var(--felt-dark);
+    overflow:hidden;
+    cursor:pointer;
+  }
+  .wheel canvas{
+    display:block;
+    width:100%;
+    height:100%;
   }
 
   .wheel-center{
@@ -128,38 +139,35 @@
     align-items:center;
     justify-content:center;
     font-size:22px;
+    color: var(--felt-dark);
+    pointer-events:none;
   }
 
-  .segment{
-    position:absolute;
-    top:0; left:50%;
-    width:2px; height:50%;
-    transform-origin: bottom center;
+  .wheel.shuffling{ animation: shuffleWiggle 0.5s ease; }
+  @keyframes shuffleWiggle{
+    0%   { filter: brightness(1); }
+    50%  { filter: brightness(1.35); }
+    100% { filter: brightness(1); }
   }
 
-  .card-token{
-    position:absolute;
-    top:14%;
-    left:50%;
-    transform: translateX(-50%);
-    width:52px;
-    height:74px;
-    border-radius:6px;
-    background: linear-gradient(160deg, var(--wine-bright), var(--wine) 70%);
-    border: 2px solid var(--gold);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:22px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.45);
-    overflow:hidden;
+  /* Carta que está bajo el puntero ahora mismo */
+  .now-showing{
+    min-height: 28px;
+    margin-bottom: 18px;
+    font-size: 18px;
+    color: var(--gold-bright);
+    text-align:center;
+    letter-spacing:0.03em;
   }
-  .card-token img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
+  .now-showing small{
+    display:block;
+    font-size:12px;
+    color: var(--cream-muted);
+    letter-spacing:0.25em;
+    text-transform:uppercase;
   }
 
+  /* ---------- Controles ---------- */
   .controls{
     display:flex;
     flex-direction:column;
@@ -168,7 +176,6 @@
   }
 
   #spinBtn{
-    font-family: inherit;
     font-size:18px;
     letter-spacing:0.08em;
     text-transform:uppercase;
@@ -201,7 +208,6 @@
   }
 
   .secondary-btn{
-    font-family: inherit;
     font-size:15px;
     letter-spacing:0.06em;
     text-transform:uppercase;
@@ -223,15 +229,74 @@
     cursor:not-allowed;
   }
 
-  .wheel.shuffling{
-    animation: shuffleWiggle 0.5s ease;
+  .options{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap: 10px 22px;
+    font-size:14px;
+    color: rgba(242,232,213,0.8);
   }
-  @keyframes shuffleWiggle{
-    0%   { filter: brightness(1); }
-    50%  { filter: brightness(1.35); }
-    100% { filter: brightness(1); }
+  .toggle{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .toggle input{
+    appearance:none;
+    width:38px; height:22px;
+    border-radius:11px;
+    border: 2px solid var(--gold);
+    background: var(--felt-dark);
+    position:relative;
+    cursor:pointer;
+    transition: background 0.15s ease;
+    margin:0;
+  }
+  .toggle input::after{
+    content:'';
+    position:absolute;
+    top:2px; left:2px;
+    width:14px; height:14px;
+    border-radius:50%;
+    background: var(--gold);
+    transition: transform 0.15s ease;
+  }
+  .toggle input:checked{ background: var(--wine); }
+  .toggle input:checked::after{ transform: translateX(16px); background: var(--gold-bright); }
+
+  .deck-status{
+    font-size:13px;
+    color: var(--cream-muted);
+    text-align:center;
+  }
+  .link-btn{
+    background:none;
+    border:none;
+    color: var(--gold-bright);
+    text-decoration: underline;
+    cursor:pointer;
+    font-size:inherit;
+    padding:0 2px;
   }
 
+  .hint{
+    font-size:13px;
+    color: var(--cream-muted);
+    font-style: italic;
+    text-align:center;
+  }
+  kbd{
+    font-family: inherit;
+    font-size: 12px;
+    border: 1px solid rgba(201,162,75,0.6);
+    border-radius:4px;
+    padding: 0 5px;
+  }
+
+  /* ---------- Historial ---------- */
   .history-panel{
     margin-top: 34px;
     width: min(480px, 92vw);
@@ -246,6 +311,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
+    gap:10px;
     font-size:14px;
     letter-spacing:0.05em;
     text-transform:uppercase;
@@ -256,7 +322,6 @@
   }
 
   .clear-btn{
-    font-family: inherit;
     font-size:12px;
     text-transform:uppercase;
     letter-spacing:0.05em;
@@ -293,7 +358,10 @@
     border-bottom: 1px dashed rgba(242,232,213,0.15);
     font-size:14px;
     animation: slideIn 0.3s ease;
+    cursor:pointer;
+    border-radius:6px;
   }
+  .history-item:hover{ background: rgba(242,232,213,0.06); }
   .history-item:last-child{ border-bottom:none; }
 
   @keyframes slideIn{
@@ -317,9 +385,9 @@
   }
 
   .history-index{
-    color: rgba(242,232,213,0.5);
+    color: var(--cream-muted);
     font-size:12px;
-    width:20px;
+    width:24px;
     flex-shrink:0;
   }
 
@@ -330,21 +398,21 @@
 
   .history-time{
     font-size:11px;
-    color: rgba(242,232,213,0.4);
+    color: var(--cream-muted);
     flex-shrink:0;
   }
 
   .history-empty{
     text-align:center;
-    color: rgba(242,232,213,0.4);
+    color: var(--cream-muted);
     font-style:italic;
     font-size:14px;
     padding: 14px 0;
   }
 
+  /* ---------- Galería ---------- */
   .gallery-toggle{
     margin-top: 28px;
-    font-family: inherit;
     font-size:15px;
     letter-spacing:0.06em;
     text-transform:uppercase;
@@ -362,78 +430,109 @@
   }
 
   .gallery-section{
-    display:none;
     width: min(1000px, 94vw);
     margin-top: 30px;
-  }
-  .gallery-section.show{
-    display:block;
     animation: fadeIn 0.3s ease;
   }
 
+  .gallery-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom: 18px;
+  }
+
   .gallery-title{
-    text-align:center;
     font-size:22px;
     color: var(--gold-bright);
-    margin-bottom: 18px;
+    margin:0;
     letter-spacing:0.03em;
   }
 
+  .gallery-search{
+    font-family: inherit;
+    font-size:15px;
+    padding: 10px 18px;
+    border-radius: 40px;
+    border: 2px solid var(--gold);
+    background: rgba(6,34,24,0.7);
+    color: var(--cream);
+    width: min(280px, 100%);
+  }
+  .gallery-search::placeholder{ color: var(--cream-muted); }
+
   .gallery-grid{
     display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 14px;
   }
 
   .gallery-card{
     position:relative;
-    aspect-ratio: 2 / 2.8;
+    aspect-ratio: 900 / 1241;
     border-radius:8px;
     overflow:hidden;
     border: 2px solid var(--gold);
     cursor:pointer;
     box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    background: var(--wine);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+    background: var(--felt-dark);
+    padding:0;
+    color: inherit;
   }
-  .gallery-card:hover{
+  .gallery-card:hover,
+  .gallery-card:focus-visible{
     transform: translateY(-4px) scale(1.04);
     box-shadow: 0 10px 20px rgba(0,0,0,0.5);
   }
   .gallery-card img{
     width:100%;
     height:100%;
-    object-fit:cover;
+    object-fit:contain;
     display:block;
   }
   .gallery-card-name{
     position:absolute;
     left:0; right:0; bottom:0;
-    padding: 5px 6px 4px;
+    padding: 14px 6px 5px;
     font-size:11px;
     text-align:center;
-    background: linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
+    background: linear-gradient(0deg, rgba(0,0,0,0.9), transparent);
     color: var(--cream);
     line-height:1.2;
   }
-
-  .hint{
-    font-size:13px;
-    color: rgba(242,232,213,0.55);
-    font-style: italic;
+  .gallery-card.drawn{ opacity:0.45; }
+  .gallery-card.drawn::after{
+    content:'Ya salió';
+    position:absolute;
+    top:6px; right:6px;
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:8px;
+    background: var(--wine-bright);
+    border: 1px solid var(--gold);
   }
 
-  /* Modal */
+  .gallery-empty{
+    grid-column: 1 / -1;
+    text-align:center;
+    font-style:italic;
+    color: var(--cream-muted);
+  }
+
+  /* ---------- Modal ---------- */
   .modal-backdrop{
     position:fixed;
     inset:0;
-    background: rgba(3,15,10,0.75);
+    background: rgba(3,15,10,0.8);
     backdrop-filter: blur(3px);
     display:none;
     align-items:center;
     justify-content:center;
     z-index:100;
-    padding:20px;
+    padding:16px;
   }
   .modal-backdrop.show{
     display:flex;
@@ -445,19 +544,24 @@
     background: linear-gradient(160deg, #0f4a30, var(--felt-dark));
     border: 2px solid var(--gold);
     border-radius: 18px;
-    max-width: 720px;
+    max-width: 680px;
+    max-height: calc(100vh - 32px);
     width:100%;
-    padding: 34px 32px 32px;
+    padding: 28px 20px 22px;
     position:relative;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
     text-align:center;
     animation: pop 0.3s cubic-bezier(0.2,0.9,0.3,1.2);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
   }
   @keyframes pop{ from{ transform: scale(0.85); opacity:0; } to{ transform: scale(1); opacity:1;} }
 
   .modal-close{
     position:absolute;
-    top:12px; right:14px;
+    top:10px; right:12px;
+    width:36px; height:36px;
     background:none;
     border:none;
     color: var(--gold);
@@ -466,35 +570,63 @@
     line-height:1;
   }
 
+  .modal-label{
+    font-size:12px;
+    letter-spacing:0.3em;
+    text-transform:uppercase;
+    color: var(--gold);
+    margin: 0 0 10px;
+  }
+
   .modal-image{
-    width: min(620px, 92vw);
-    height: min(860px, 84vh);
-    margin: 0 auto 20px;
-    border-radius:14px;
-    border: 3px solid var(--gold);
-    overflow:hidden;
-    background: linear-gradient(160deg, var(--wine-bright), var(--wine) 70%);
+    flex: 1 1 auto;
+    min-height:0;
+    max-width:100%;
+    margin: 0 auto 16px;
     display:flex;
     align-items:center;
     justify-content:center;
     font-size:80px;
-    box-shadow: 0 12px 34px rgba(0,0,0,0.55);
   }
   .modal-image img{
-    width:100%;
-    height:100%;
-    object-fit:contain;
+    display:block;
+    max-width:100%;
+    max-height: calc(100vh - 190px);
+    border-radius:14px;
+    box-shadow: 0 12px 34px rgba(0,0,0,0.55);
   }
 
   .modal-name{
     font-size:26px;
-    margin: 0 0 4px;
+    margin: 0;
     color: var(--gold-bright);
     letter-spacing:0.02em;
   }
 
+  .modal-actions{
+    display:flex;
+    gap:12px;
+    margin-top:14px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .modal-actions .secondary-btn{ padding:10px 22px; font-size:13px; }
+
+  @media (hover: none){
+    .hint{ display:none; }
+  }
+
+  @media (max-width: 480px){
+    body{ padding-top: 28px; }
+    .wheel-center{ width:48px; height:48px; font-size:18px; }
+    #spinBtn{ padding:14px 34px; font-size:16px; }
+  }
+
   @media (prefers-reduced-motion: reduce){
-    .wheel{ transition: none; }
+    *, *::before, *::after{
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 </style>
 </head>
@@ -504,231 +636,535 @@
   <p class="subtitle">Gira la rueda y descubre qué carta te espera</p>
 
   <div class="wheel-stage">
-    <div class="pointer"></div>
-    <div class="wheel-ring">
-      <div class="wheel" id="wheel">
-        <div class="wheel-center">✦</div>
-        <!-- las cartas se insertan aquí por JS -->
-      </div>
+    <div class="pointer" id="pointer"></div>
+    <div class="wheel" id="wheel" title="Haz clic para girar">
+      <canvas id="wheelCanvas" aria-hidden="true"></canvas>
+      <div class="wheel-center">✦</div>
     </div>
   </div>
 
+  <div class="now-showing" id="nowShowing" aria-hidden="true"><small>Bajo el puntero</small><span id="nowShowingName">—</span></div>
+
   <div class="controls">
     <div class="btn-row">
-      <button id="spinBtn">Girar la ruleta</button>
-      <button id="shuffleBtn" class="secondary-btn" title="Reordena las cartas en la ruleta">🔀 Barajar</button>
+      <button id="spinBtn" type="button">Girar la ruleta</button>
+      <button id="shuffleBtn" class="secondary-btn" type="button" title="Reordena las cartas en la ruleta">🔀 Barajar</button>
     </div>
+
+    <div class="options">
+      <label class="toggle" title="Las cartas que ya han salido se quitan de la ruleta">
+        <input type="checkbox" id="noRepeatToggle">
+        Sin repetir cartas
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="soundToggle" checked>
+        Sonido
+      </label>
+    </div>
+
+    <p class="deck-status" id="deckStatus"></p>
+    <p class="hint">Atajo: pulsa <kbd>Espacio</kbd> para girar.</p>
   </div>
 
   <div class="history-panel" id="historyPanel">
     <div class="history-header">
-      <span>📜 Registro de esta sesión</span>
-      <button id="clearHistoryBtn" class="clear-btn" title="Vaciar el registro">Vaciar</button>
+      <span>📜 Registro de esta sesión <span id="historyCount"></span></span>
+      <button id="clearHistoryBtn" class="clear-btn" type="button" title="Vaciar el registro">Vaciar</button>
     </div>
     <ol class="history-list" id="historyList">
       <li class="history-empty">Aún no ha salido ninguna carta.</li>
     </ol>
   </div>
 
-  <button id="toggleGalleryBtn" class="gallery-toggle">📚 Ver todas las cartas</button>
+  <button id="toggleGalleryBtn" class="gallery-toggle" type="button" aria-expanded="false" aria-controls="gallerySection">📚 Ver todas las cartas</button>
 
-  <div class="gallery-section" id="gallerySection">
-    <h2 class="gallery-title">Colección completa</h2>
+  <section class="gallery-section" id="gallerySection" hidden>
+    <div class="gallery-head">
+      <h2 class="gallery-title">Colección completa <span id="galleryCount"></span></h2>
+      <input type="search" class="gallery-search" id="gallerySearch" placeholder="Buscar carta…" aria-label="Buscar carta" autocomplete="off">
+    </div>
     <div class="gallery-grid" id="galleryGrid"></div>
-  </div>
+  </section>
 
   <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal-card">
-      <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalName">
+      <button class="modal-close" id="modalClose" type="button" aria-label="Cerrar">✕</button>
+      <p class="modal-label" id="modalLabel">Te ha tocado</p>
       <div class="modal-image" id="modalImage">🂠</div>
       <h2 class="modal-name" id="modalName">Nombre de la carta</h2>
+      <div class="modal-actions" id="modalActions">
+        <button class="secondary-btn" id="spinAgainBtn" type="button">🎡 Girar otra vez</button>
+      </div>
     </div>
   </div>
+
+  <div class="visually-hidden" id="announcer" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);"></div>
 
 <script>
   /* =========================================================
      DATOS DE LAS CARTAS
      -----------------------------------------------------------
      - name: nombre de la carta (se muestra bajo la imagen)
-     - category: texto corto interno (no se muestra en pantalla)
      - image: ruta a la imagen de la carta
-     - icon: emoji de respaldo si no hay imagen
+     Para añadir una carta nueva: sube la imagen a /cartas y
+     añade una línea aquí.
   ========================================================= */
-  const cards = [
-    { name: "N", category: "Teamlocke", icon: "🂠", image: "cartas/N.webp" },
-    { name: "Anticura", category: "Teamlocke", icon: "🂠", image: "cartas/anticura.webp" },
-    { name: "Antipociones", category: "Teamlocke", icon: "🂠", image: "cartas/antipociones.webp" },
-    { name: "Antistab", category: "Teamlocke", icon: "🂠", image: "cartas/antistab.webp" },
-    { name: "Anulacartas", category: "Teamlocke", icon: "🂠", image: "cartas/anulacartas.webp" },
-    { name: "Ataqueespecial", category: "Teamlocke", icon: "🂠", image: "cartas/ataqueespecial.webp" },
-    { name: "Balance", category: "Teamlocke", icon: "🂠", image: "cartas/balance.webp" },
-    { name: "Bloquea Tipo", category: "Teamlocke", icon: "🂠", image: "cartas/bloquea_tipo.webp" },
-    { name: "Bloqueo Dimensional", category: "Teamlocke", icon: "🂠", image: "cartas/bloqueo_dimensional.webp" },
-    { name: "Candado", category: "Teamlocke", icon: "🂠", image: "cartas/candado.webp" },
-    { name: "Capturaextra", category: "Teamlocke", icon: "🂠", image: "cartas/capturaextra.webp" },
-    { name: "Carta Magna", category: "Teamlocke", icon: "🂠", image: "cartas/carta_magna.webp" },
-    { name: "Cartaextra", category: "Teamlocke", icon: "🂠", image: "cartas/cartaextra.webp" },
-    { name: "Choiceband", category: "Teamlocke", icon: "🂠", image: "cartas/choiceband.webp" },
-    { name: "Ciego", category: "Teamlocke", icon: "🂠", image: "cartas/ciego.webp" },
-    { name: "Clan Diamante", category: "Teamlocke", icon: "🂠", image: "cartas/clan_diamante.webp" },
-    { name: "Corazondeash", category: "Teamlocke", icon: "🂠", image: "cartas/corazondeash.webp" },
-    { name: "Decido", category: "Teamlocke", icon: "🂠", image: "cartas/decido.webp" },
-    { name: "Desarme", category: "Teamlocke", icon: "🂠", image: "cartas/desarme.webp" },
-    { name: "Deseo Oculto", category: "Teamlocke", icon: "🂠", image: "cartas/deseo_oculto.webp" },
-    { name: "Devora Almas", category: "Teamlocke", icon: "🂠", image: "cartas/devora_almas.webp" },
-    { name: "Discal", category: "Teamlocke", icon: "🂠", image: "cartas/discal.webp" },
-    { name: "Dobleequipo", category: "Teamlocke", icon: "🂠", image: "cartas/dobleequipo.webp" },
-    { name: "Equipo Ardiente", category: "Teamlocke", icon: "🂠", image: "cartas/equipo_ardiente.webp" },
-    { name: "Equipo Toxico", category: "Teamlocke", icon: "🂠", image: "cartas/equipo_toxico.webp" },
-    { name: "Escudoreal", category: "Teamlocke", icon: "🂠", image: "cartas/escudoreal.webp" },
-    { name: "Esquema", category: "Teamlocke", icon: "🂠", image: "cartas/esquema.webp" },
-    { name: "Fukuma Mizushi", category: "Teamlocke", icon: "🂠", image: "cartas/fukuma_mizushi.webp" },
-    { name: "Galaxia Omega", category: "Teamlocke", icon: "🂠", image: "cartas/galaxia_omega.webp" },
-    { name: "Giovanni", category: "Teamlocke", icon: "🂠", image: "cartas/giovanni.webp" },
-    { name: "Helllll Nahhhh", category: "Teamlocke", icon: "🂠", image: "cartas/helllll_nahhhh.webp" },
-    { name: "Jaquematiev", category: "Teamlocke", icon: "🂠", image: "cartas/jaquematiev.webp" },
-    { name: "Katateka", category: "Teamlocke", icon: "🂠", image: "cartas/katateka.webp" },
-    { name: "Kyoka Suigetsu", category: "Teamlocke", icon: "🂠", image: "cartas/kyoka_suigetsu.webp" },
-    { name: "Ladron", category: "Teamlocke", icon: "🂠", image: "cartas/ladron.webp" },
-    { name: "Lionel", category: "Teamlocke", icon: "🂠", image: "cartas/lionel.webp" },
-    { name: "Majestad Escanor", category: "Teamlocke", icon: "🂠", image: "cartas/majestad_escanor_.webp" },
-    { name: "Masuda", category: "Teamlocke", icon: "🂠", image: "cartas/masuda.webp" },
-    { name: "Megaboost", category: "Teamlocke", icon: "🂠", image: "cartas/megaboost.webp" },
-    { name: "Monotype", category: "Teamlocke", icon: "🂠", image: "cartas/monotype.webp" },
-    { name: "Multi Perla", category: "Teamlocke", icon: "🂠", image: "cartas/multi_perla.webp" },
-    { name: "Muryokusho", category: "Teamlocke", icon: "🂠", image: "cartas/muryokusho.webp" },
-    { name: "Nada", category: "Teamlocke", icon: "🂠", image: "cartas/nada.webp" },
-    { name: "Ninja", category: "Teamlocke", icon: "🂠", image: "cartas/ninja.webp" },
-    { name: "Palmas", category: "Teamlocke", icon: "🂠", image: "cartas/palmas.webp" },
-    { name: "Paradoja Futuro", category: "Teamlocke", icon: "🂠", image: "cartas/paradoja_futuro.webp" },
-    { name: "Paradoja Pasada", category: "Teamlocke", icon: "🂠", image: "cartas/paradoja_pasada.webp" },
-    { name: "Pokemon Random", category: "Teamlocke", icon: "🂠", image: "cartas/pokemon_random.webp" },
-    { name: "Poseidon", category: "Teamlocke", icon: "🂠", image: "cartas/poseidon.webp" },
-    { name: "Profanatumbas", category: "Teamlocke", icon: "🂠", image: "cartas/profanatumbas.webp" },
-    { name: "Profesor Oak", category: "Teamlocke", icon: "🂠", image: "cartas/profesor_oak.webp" },
-    { name: "Quitamovimientos", category: "Teamlocke", icon: "🂠", image: "cartas/quitamovimientos.webp" },
-    { name: "Randomiento", category: "Teamlocke", icon: "🂠", image: "cartas/randomiento.webp" },
-    { name: "Reviertefectos", category: "Teamlocke", icon: "🂠", image: "cartas/reviertefectos.webp" },
-    { name: "Ribombeeeee", category: "Teamlocke", icon: "🂠", image: "cartas/ribombeeeee.webp" },
-    { name: "Rinne Sharingan", category: "Teamlocke", icon: "🂠", image: "cartas/rinne-sharingan.webp" },
-    { name: "Rivalidad", category: "Teamlocke", icon: "🂠", image: "cartas/rivalidad.webp" },
-    { name: "Robacartas", category: "Teamlocke", icon: "🂠", image: "cartas/robacartas.webp" },
-    { name: "Robaruta", category: "Teamlocke", icon: "🂠", image: "cartas/robaruta.webp" },
-    { name: "Sinestado", category: "Teamlocke", icon: "🂠", image: "cartas/sinestado.webp" },
-    { name: "Sinruta", category: "Teamlocke", icon: "🂠", image: "cartas/sinruta.webp" },
-    { name: "Sombratrampa", category: "Teamlocke", icon: "🂠", image: "cartas/sombratrampa.webp" },
-    { name: "Tarjeta Roja", category: "Teamlocke", icon: "🂠", image: "cartas/tarjeta_roja.webp" },
-    { name: "Teamrocket", category: "Teamlocke", icon: "🂠", image: "cartas/teamrocket.webp" },
-    { name: "Turbonerfeo", category: "Teamlocke", icon: "🂠", image: "cartas/turbonerfeo.webp" },
-    { name: "Vetado", category: "Teamlocke", icon: "🂠", image: "cartas/vetado.webp" },
-    { name: "Runic", category: "Teamlocke", icon: "🂠", image: "cartas/toliet_runic.webp" },
+  const ALL_CARDS = [
+    { name: "N", image: "cartas/N.webp" },
+    { name: "Antiboosteo", image: "cartas/antiboosteo.webp" },
+    { name: "Anticura", image: "cartas/anticura.webp" },
+    { name: "Antipociones", image: "cartas/antipociones.webp" },
+    { name: "Antistab", image: "cartas/antistab.webp" },
+    { name: "Anulacartas", image: "cartas/anulacartas.webp" },
+    { name: "Ataque Especial", image: "cartas/ataqueespecial.webp" },
+    { name: "Balance", image: "cartas/balance.webp" },
+    { name: "Bloquea Tipo", image: "cartas/bloquea_tipo.webp" },
+    { name: "Bloqueo Dimensional", image: "cartas/bloqueo_dimensional.webp" },
+    { name: "Cable Link", image: "cartas/cablelink.webp" },
+    { name: "Caldera", image: "cartas/Caldera.webp" },
+    { name: "Cancelapociones", image: "cartas/cancelapociones.webp" },
+    { name: "Candado", image: "cartas/candado.webp" },
+    { name: "Captura Extra", image: "cartas/capturaextra.webp" },
+    { name: "Carta Magna", image: "cartas/carta_magna.webp" },
+    { name: "Carta Extra", image: "cartas/cartaextra.webp" },
+    { name: "Choice Band", image: "cartas/choiceband.webp" },
+    { name: "Ciego", image: "cartas/ciego.webp" },
+    { name: "Clan Diamante", image: "cartas/clan_diamante.webp" },
+    { name: "Corazón de Ash", image: "cartas/corazondeash.webp" },
+    { name: "Decido", image: "cartas/decido.webp" },
+    { name: "Desarme", image: "cartas/desarme.webp" },
+    { name: "Deseo Oculto", image: "cartas/deseo_oculto.webp" },
+    { name: "Devora Almas", image: "cartas/devora_almas.webp" },
+    { name: "Discal", image: "cartas/discal.webp" },
+    { name: "Ditto", image: "cartas/ditto.webp" },
+    { name: "Doble Equipo", image: "cartas/dobleequipo.webp" },
+    { name: "ENS", image: "cartas/ens.webp" },
+    { name: "Equipo Ardiente", image: "cartas/equipo_ardiente.webp" },
+    { name: "Equipo Tóxico", image: "cartas/equipo_toxico.webp" },
+    { name: "Escudo Real", image: "cartas/escudoreal.webp" },
+    { name: "Esquema", image: "cartas/esquema.webp" },
+    { name: "Eustaquia", image: "cartas/eustaquia.webp" },
+    { name: "Fukuma Mizushi", image: "cartas/fukuma_mizushi.webp" },
+    { name: "Furia Infantil", image: "cartas/furia_infantil.webp" },
+    { name: "Galaxia Omega", image: "cartas/galaxia_omega.webp" },
+    { name: "Giovanni", image: "cartas/giovanni.webp" },
+    { name: "Helllll Nahhhh", image: "cartas/helllll_nahhhh.webp" },
+    { name: "Jaquematiev", image: "cartas/jaquematiev.webp" },
+    { name: "Josefina", image: "cartas/josefina.webp" },
+    { name: "José Luis", image: "cartas/joseluis.webp" },
+    { name: "Katateka", image: "cartas/katateka.webp" },
+    { name: "Kratos", image: "cartas/kratos.webp" },
+    { name: "Kyoka Suigetsu", image: "cartas/kyoka_suigetsu.webp" },
+    { name: "Ladrón", image: "cartas/ladron.webp" },
+    { name: "Lionel", image: "cartas/lionel.webp" },
+    { name: "Majestad Escanor", image: "cartas/majestad_escanor_.webp" },
+    { name: "Masuda", image: "cartas/masuda.webp" },
+    { name: "Megaboost", image: "cartas/megaboost.webp" },
+    { name: "Mismo Destino", image: "cartas/mismodestino.webp" },
+    { name: "Modo Daruma", image: "cartas/mododaruma.webp" },
+    { name: "Monotype", image: "cartas/monotype.webp" },
+    { name: "Multi Perla", image: "cartas/multi_perla.webp" },
+    { name: "Muryokusho", image: "cartas/muryokusho.webp" },
+    { name: "Nada", image: "cartas/nada.webp" },
+    { name: "Ninja", image: "cartas/ninja.webp" },
+    { name: "Paco", image: "cartas/paco.webp" },
+    { name: "Padre Ausente", image: "cartas/padre_ausente.webp" },
+    { name: "Palmas", image: "cartas/palmas.webp" },
+    { name: "Paradoja Futuro", image: "cartas/paradoja_futuro.webp" },
+    { name: "Paradoja Pasada", image: "cartas/paradoja_pasada.webp" },
+    { name: "Poción Extra", image: "cartas/pocion_extra.webp" },
+    { name: "Pokémon Random", image: "cartas/pokemon_random.webp" },
+    { name: "Poseidón", image: "cartas/poseidon.webp" },
+    { name: "Profanatumbas", image: "cartas/profanatumbas.webp" },
+    { name: "Profesor Oak", image: "cartas/profesor_oak.webp" },
+    { name: "Quitamovimientos", image: "cartas/quitamovimientos.webp" },
+    { name: "Randomiento", image: "cartas/randomiento.webp" },
+    { name: "Reviertefectos", image: "cartas/reviertefectos.webp" },
+    { name: "Ribombeeeee", image: "cartas/ribombeeeee.webp" },
+    { name: "Rinne Sharingan", image: "cartas/rinne-sharingan.webp" },
+    { name: "Rivalidad", image: "cartas/rivalidad.webp" },
+    { name: "Robacartas", image: "cartas/robacartas.webp" },
+    { name: "Robaruta", image: "cartas/robaruta.webp" },
+    { name: "Runic", image: "cartas/toliet_runic.webp" },
+    { name: "Sin Estado", image: "cartas/sinestado.webp" },
+    { name: "Sin Ruta", image: "cartas/sinruta.webp" },
+    { name: "Skibidi Runic", image: "cartas/skibidi_runic.webp" },
+    { name: "Sombratrampa", image: "cartas/sombratrampa.webp" },
+    { name: "Tarjeta Roja", image: "cartas/tarjeta_roja.webp" },
+    { name: "Team Rocket", image: "cartas/teamrocket.webp" },
+    { name: "Tempus", image: "cartas/tempus.webp" },
+    { name: "Turbonerfeo", image: "cartas/turbonerfeo.webp" },
+    { name: "Vetado", image: "cartas/vetado.webp" },
+    { name: "Vetapoke", image: "cartas/vetapoke.webp" },
   ];
 
-  const wheel = document.getElementById('wheel');
-  const spinBtn = document.getElementById('spinBtn');
-  const shuffleBtn = document.getElementById('shuffleBtn');
-  const modalBackdrop = document.getElementById('modalBackdrop');
-  const historyList = document.getElementById('historyList');
-  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-  const modalClose = document.getElementById('modalClose');
-  const modalImage = document.getElementById('modalImage');
-  const modalName = document.getElementById('modalName');
-  const toggleGalleryBtn = document.getElementById('toggleGalleryBtn');
-  const gallerySection = document.getElementById('gallerySection');
-  const galleryGrid = document.getElementById('galleryGrid');
+  const $ = (id) => document.getElementById(id);
+  const wheelEl = $('wheel');
+  const canvas = $('wheelCanvas');
+  const ctx = canvas.getContext('2d');
+  const pointer = $('pointer');
+  const spinBtn = $('spinBtn');
+  const shuffleBtn = $('shuffleBtn');
+  const noRepeatToggle = $('noRepeatToggle');
+  const soundToggle = $('soundToggle');
+  const deckStatus = $('deckStatus');
+  const nowShowingName = $('nowShowingName');
+  const modalBackdrop = $('modalBackdrop');
+  const modalClose = $('modalClose');
+  const modalImage = $('modalImage');
+  const modalName = $('modalName');
+  const modalLabel = $('modalLabel');
+  const modalActions = $('modalActions');
+  const spinAgainBtn = $('spinAgainBtn');
+  const historyList = $('historyList');
+  const historyCount = $('historyCount');
+  const clearHistoryBtn = $('clearHistoryBtn');
+  const toggleGalleryBtn = $('toggleGalleryBtn');
+  const gallerySection = $('gallerySection');
+  const galleryGrid = $('galleryGrid');
+  const gallerySearch = $('gallerySearch');
+  const galleryCount = $('galleryCount');
+  const announcer = $('announcer');
 
-  const total = cards.length;
-  const segmentAngle = 360 / total;
-  let currentRotation = 0;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const SPIN_MS = reducedMotion ? 600 : 5200;
+
+  // Orden actual de la ruleta (se puede barajar) y cartas que ya han salido
+  let order = [...ALL_CARDS];
+  const drawn = new Set();
+  let rotation = 0;          // en radianes; 0 = la carta 0 empieza justo bajo el puntero
   let spinning = false;
+  let lastWinner = null;     // la carta ganadora se resalta hasta el siguiente giro
+  let lastFocus = null;
 
   // Registro temporal de la sesión: vive solo en memoria, se borra al recargar la página
   let history = [];
 
-  // Construir los tokens de carta alrededor de la rueda
-  function buildWheel(){
+  const prefs = (() => {
+    try { return JSON.parse(localStorage.getItem('ruleta-prefs')) || {}; } catch { return {}; }
+  })();
+  function savePrefs(){
+    try {
+      localStorage.setItem('ruleta-prefs', JSON.stringify({ sound: soundToggle.checked, noRepeat: noRepeatToggle.checked }));
+    } catch {}
+  }
+  if (typeof prefs.sound === 'boolean') soundToggle.checked = prefs.sound;
+  if (typeof prefs.noRepeat === 'boolean') noRepeatToggle.checked = prefs.noRepeat;
+
+  /* ---------- Cartas activas en la ruleta ---------- */
+  // En modo sin repetir, la última ganadora sigue visible (resaltada) hasta el siguiente giro
+  function activeCards(){
+    if (!noRepeatToggle.checked) return order;
+    return order.filter(card => !drawn.has(card.name) || card.name === lastWinner);
+  }
+
+  function remainingCount(){
+    if (!noRepeatToggle.checked) return order.length;
+    return order.filter(card => !drawn.has(card.name)).length;
+  }
+
+  /* ---------- Dibujo de la ruleta ---------- */
+  // Granate claro y verde oscuro alternos: se distinguen por brillo, no solo por tono (daltonismo)
+  const COLORS = ['#8f2640', '#062218', '#5a1727'];
+
+  function resizeCanvas(){
+    const size = canvas.clientWidth;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawWheel();
+  }
+
+  function drawWheel(){
+    const cards = activeCards();
+    const size = canvas.clientWidth;
+    const r = size / 2;
+    const n = cards.length;
+    ctx.clearRect(0, 0, size, size);
+    if (!n) return;
+
+    const seg = (Math.PI * 2) / n;
+    // Tamaño de letra según el hueco disponible en cada porción
+    const fontSize = Math.max(8, Math.min(16, (r * seg) * 0.62));
+
+    ctx.save();
+    ctx.translate(r, r);
+    // El puntero está arriba (-90°). La carta i ocupa [i*seg - seg/2, i*seg + seg/2] respecto al puntero.
+    ctx.rotate(rotation - Math.PI / 2);
+
     cards.forEach((card, i) => {
-      const angle = segmentAngle * i;
-      const seg = document.createElement('div');
-      seg.className = 'segment';
-      seg.style.transform = `rotate(${angle}deg)`;
+      const start = i * seg - seg / 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, r, start, start + seg);
+      ctx.closePath();
+      // Con número impar de porciones evitamos que la última y la primera tengan el mismo color
+      const isWinner = card.name === lastWinner && !spinning;
+      ctx.fillStyle = isWinner ? '#e8c874' : (n % 2 === 1 && i === n - 1) ? COLORS[2] : COLORS[i % 2];
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(201,162,75,0.55)';
+      ctx.lineWidth = n > 60 ? 0.6 : 1;
+      ctx.stroke();
 
-      const token = document.createElement('div');
-      token.className = 'card-token';
-      // contrarrota para que la carta se vea "de pie"
-      token.style.transform = `translateX(-50%) rotate(${-angle}deg)`;
+      ctx.save();
+      ctx.rotate(i * seg);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = isWinner ? '#062218' : drawn.has(card.name) ? 'rgba(242,232,213,0.45)' : '#f2e8d5';
+      ctx.font = `${isWinner ? 'bold ' : ''}${fontSize}px Georgia, serif`;
+      const maxWidth = r * 0.62;
+      ctx.fillText(card.name, r - 12, 0, maxWidth);
+      ctx.restore();
+    });
 
-      if (card.image) {
-        const img = document.createElement('img');
-        img.src = card.image;
-        img.alt = card.name;
-        token.appendChild(img);
-      } else {
-        token.textContent = card.icon || '🂠';
+    ctx.restore();
+  }
+
+  /* ---------- Carta bajo el puntero ---------- */
+  function indexAtPointer(){
+    const n = activeCards().length;
+    const seg = (Math.PI * 2) / n;
+    // La carta i está bajo el puntero cuando rotation ≈ -i*seg
+    const a = ((-rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    return Math.round(a / seg) % n;
+  }
+
+  function updateNowShowing(){
+    const cards = activeCards();
+    nowShowingName.textContent = cards.length ? cards[indexAtPointer()].name : '—';
+  }
+
+  /* ---------- Sonido ---------- */
+  let audioCtx = null;
+  function beep(freq, duration, volume = 0.05, type = 'triangle'){
+    if (!soundToggle.checked) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch {}
+  }
+  function fanfare(){
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.25, 0.06), i * 110));
+  }
+
+  /* ---------- Giro ---------- */
+  const easeOut = (t) => 1 - Math.pow(1 - t, 4);
+
+  function spin(){
+    if (spinning || !remainingCount()) return;
+    lastWinner = null;
+    const cards = activeCards();
+    closeModal(false);
+    spinning = true;
+    setControlsDisabled(true);
+
+    const n = cards.length;
+    const seg = (Math.PI * 2) / n;
+    const targetIndex = Math.floor(Math.random() * n);
+    // Precarga la imagen de la carta para que el resultado aparezca al instante
+    new Image().src = cards[targetIndex].image;
+    // Pequeño desvío aleatorio dentro de la porción para que no caiga siempre en el centro
+    const jitter = (Math.random() - 0.5) * seg * 0.7;
+    const fullSpins = reducedMotion ? 1 : 6 + Math.floor(Math.random() * 3);
+
+    const start = rotation;
+    const current = ((start % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const goal = ((-targetIndex * seg + jitter) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+    let delta = goal - current;
+    if (delta <= 0) delta += Math.PI * 2;
+    const end = start + fullSpins * Math.PI * 2 + delta;
+
+    const t0 = performance.now();
+    let lastIndex = indexAtPointer();
+
+    function frame(now){
+      const t = Math.min(1, (now - t0) / SPIN_MS);
+      rotation = start + (end - start) * easeOut(t);
+      drawWheel();
+
+      const idx = indexAtPointer();
+      if (idx !== lastIndex){
+        lastIndex = idx;
+        nowShowingName.textContent = cards[idx].name;
+        beep(900 + Math.random() * 120, 0.03, 0.025, 'square');
+        pointer.classList.remove('tick');
+        void pointer.offsetWidth;
+        pointer.classList.add('tick');
       }
 
-      seg.appendChild(token);
-      wheel.appendChild(seg);
+      if (t < 1){
+        requestAnimationFrame(frame);
+      } else {
+        finishSpin(cards[indexAtPointer()]);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finishSpin(card){
+    spinning = false;
+    lastWinner = card.name;
+    addToHistory(card);
+    drawn.add(card.name);
+    fanfare();
+    showCard(card, true);
+    announcer.textContent = `Te ha tocado: ${card.name}`;
+    refreshAfterChange();
+    setControlsDisabled(false);
+  }
+
+  function setControlsDisabled(disabled){
+    spinBtn.disabled = disabled || remainingCount() === 0;
+    shuffleBtn.disabled = disabled;
+    noRepeatToggle.disabled = disabled;
+  }
+
+  /* ---------- Barajar ---------- */
+  // Baraja el orden de las cartas (Fisher-Yates) y vuelve a dibujar la rueda
+  function shuffleCards(){
+    if (spinning) return;
+    lastWinner = null;
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    drawWheel();
+    updateNowShowing();
+    beep(440, 0.12, 0.04);
+
+    wheelEl.classList.remove('shuffling');
+    void wheelEl.offsetWidth; // reinicia la animación
+    wheelEl.classList.add('shuffling');
+  }
+
+  /* ---------- Modal ---------- */
+  function showCard(card, fromSpin = false){
+    lastFocus = lastFocus || document.activeElement;
+    modalLabel.textContent = fromSpin ? 'Te ha tocado' : 'Carta';
+    modalName.textContent = card.name;
+    modalImage.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = card.image;
+    img.alt = card.name;
+    modalImage.appendChild(img);
+    modalActions.hidden = !fromSpin || remainingCount() === 0;
+    modalBackdrop.classList.add('show');
+    document.body.classList.add('modal-open');
+    (fromSpin && !modalActions.hidden ? spinAgainBtn : modalClose).focus();
+  }
+
+  function closeModal(restoreFocus = true){
+    if (!modalBackdrop.classList.contains('show')) return;
+    modalBackdrop.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    if (restoreFocus && lastFocus) lastFocus.focus();
+    lastFocus = null;
+  }
+
+  /* ---------- Historial ---------- */
+  function addToHistory(card){
+    const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    history.unshift({ ...card, time });
+    renderHistory();
+  }
+
+  function renderHistory(){
+    historyCount.textContent = history.length ? `(${history.length})` : '';
+    historyList.innerHTML = '';
+    if (history.length === 0) {
+      historyList.innerHTML = '<li class="history-empty">Aún no ha salido ninguna carta.</li>';
+      return;
+    }
+    history.forEach((entry, i) => {
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      li.tabIndex = 0;
+      li.innerHTML = `
+        <span class="history-index">#${history.length - i}</span>
+        <span class="history-thumb"><img alt=""></span>
+        <span class="history-name"></span>
+        <span class="history-time"></span>`;
+      li.querySelector('img').src = entry.image;
+      li.querySelector('.history-name').textContent = entry.name;
+      li.querySelector('.history-time').textContent = entry.time;
+      const open = () => showCard(entry);
+      li.addEventListener('click', open);
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
+      historyList.appendChild(li);
     });
   }
 
-  function spin(){
+  function clearHistory(){
+    history = [];
+    renderHistory();
+  }
+
+  /* ---------- Estado de la baraja ---------- */
+  function resetDeck(){
     if (spinning) return;
-    spinning = true;
-    spinBtn.disabled = true;
-
-    const targetIndex = Math.floor(Math.random() * total);
-    const fullSpins = 6; // vueltas completas antes de frenar
-    // Queremos que el CENTRO del segmento objetivo quede bajo el puntero (arriba, 0deg)
-    const targetSegmentCenter = targetIndex * segmentAngle + segmentAngle / 2;
-    // Rotamos la rueda de forma que ese ángulo llegue a 0deg (arriba)
-    const normalizedCurrent = currentRotation % 360;
-    const delta = (360 - targetSegmentCenter) - (normalizedCurrent % 360);
-    const finalRotation = currentRotation + fullSpins * 360 + ((delta + 360) % 360);
-
-    currentRotation = finalRotation;
-    wheel.style.transform = `rotate(${finalRotation}deg)`;
-
-    setTimeout(() => {
-      spinning = false;
-      spinBtn.disabled = false;
-      showCard(cards[targetIndex]);
-      addToHistory(cards[targetIndex]);
-    }, 4600);
+    drawn.clear();
+    lastWinner = null;
+    refreshAfterChange();
   }
 
-  function showCard(card){
-    modalName.textContent = card.name;
-    modalImage.innerHTML = '';
-    if (card.image) {
-      const img = document.createElement('img');
-      img.src = card.image;
-      img.alt = card.name;
-      modalImage.appendChild(img);
+  function renderDeckStatus(){
+    const total = ALL_CARDS.length;
+    const remaining = remainingCount();
+    deckStatus.innerHTML = '';
+    if (noRepeatToggle.checked){
+      deckStatus.append(`Quedan ${remaining} de ${total} cartas en la ruleta. `);
+      if (drawn.size){
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'link-btn';
+        btn.textContent = 'Devolver todas';
+        btn.addEventListener('click', resetDeck);
+        deckStatus.append(btn);
+      }
+      if (!remaining) deckStatus.prepend('¡Ya han salido todas! ');
     } else {
-      modalImage.textContent = card.icon || '🂠';
+      deckStatus.textContent = `${total} cartas en la ruleta`;
     }
-    modalBackdrop.classList.add('show');
   }
 
-  function closeModal(){
-    modalBackdrop.classList.remove('show');
+  function refreshAfterChange(){
+    drawWheel();
+    updateNowShowing();
+    renderDeckStatus();
+    renderGalleryState();
+    setControlsDisabled(spinning);
+  }
+
+  /* ---------- Galería ---------- */
+  const galleryItems = [];
+
+  function normalizar(texto){
+    return texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   }
 
   // Construye la cuadrícula de la colección completa (se puede clicar cada carta)
   function buildGallery(){
     galleryGrid.innerHTML = '';
-    cards.forEach(card => {
-      const item = document.createElement('div');
+    [...ALL_CARDS].sort((a, b) => a.name.localeCompare(b.name, 'es')).forEach(card => {
+      const item = document.createElement('button');
+      item.type = 'button';
       item.className = 'gallery-card';
+      item.setAttribute('aria-label', card.name);
 
-      if (card.image) {
-        const img = document.createElement('img');
-        img.src = card.image;
-        img.alt = card.name;
-        img.loading = 'lazy';
-        item.appendChild(img);
-      }
+      const img = document.createElement('img');
+      img.src = card.image;
+      img.alt = '';
+      img.loading = 'lazy';
+      item.appendChild(img);
 
       const label = document.createElement('div');
       label.className = 'gallery-card-name';
@@ -737,76 +1173,70 @@
 
       item.addEventListener('click', () => showCard(card));
       galleryGrid.appendChild(item);
+      galleryItems.push({ card, item });
     });
+
+    const empty = document.createElement('p');
+    empty.className = 'gallery-empty';
+    empty.id = 'galleryEmpty';
+    empty.textContent = 'Ninguna carta coincide con la búsqueda.';
+    empty.hidden = true;
+    galleryGrid.appendChild(empty);
+    galleryCount.textContent = `(${ALL_CARDS.length})`;
   }
 
-  toggleGalleryBtn.addEventListener('click', () => {
-    const isShown = gallerySection.classList.toggle('show');
-    toggleGalleryBtn.textContent = isShown ? '🎴 Ocultar cartas' : '📚 Ver todas las cartas';
-    if (isShown) {
-      gallerySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
-
-  // Baraja el orden de las cartas en el array (Fisher-Yates) y reconstruye la rueda
-  function shuffleCards(){
-    if (spinning) return;
-    for (let i = cards.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [cards[i], cards[j]] = [cards[j], cards[i]];
-    }
-    // limpiar los tokens actuales (dejando el centro de la rueda)
-    wheel.querySelectorAll('.segment').forEach(seg => seg.remove());
-    buildWheel();
-
-    // pequeño efecto visual para que se note el barajeo
-    wheel.classList.remove('shuffling');
-    void wheel.offsetWidth; // reinicia la animación
-    wheel.classList.add('shuffling');
+  function filterGallery(){
+    const q = normalizar(gallerySearch.value.trim());
+    let visible = 0;
+    galleryItems.forEach(({ card, item }) => {
+      const show = !q || normalizar(card.name).includes(q);
+      item.hidden = !show;
+      if (show) visible++;
+    });
+    $('galleryEmpty').hidden = visible > 0;
   }
 
-  function addToHistory(card){
-    const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    history.unshift({ ...card, time });
-    renderHistory();
+  function renderGalleryState(){
+    galleryItems.forEach(({ card, item }) => item.classList.toggle('drawn', drawn.has(card.name)));
   }
 
-  function renderHistory(){
-    if (history.length === 0) {
-      historyList.innerHTML = '<li class="history-empty">Aún no ha salido ninguna carta.</li>';
-      return;
-    }
-    historyList.innerHTML = history.map((entry, i) => {
-      const num = history.length - i;
-      const thumb = entry.image
-        ? `<img src="${entry.image}" alt="${entry.name}">`
-        : (entry.icon || '🂠');
-      return `
-        <li class="history-item">
-          <span class="history-index">#${num}</span>
-          <span class="history-thumb">${thumb}</span>
-          <span class="history-name">${entry.name}</span>
-          <span class="history-time">${entry.time}</span>
-        </li>`;
-    }).join('');
-  }
-
-  function clearHistory(){
-    history = [];
-    renderHistory();
-  }
-
-  clearHistoryBtn.addEventListener('click', clearHistory);
-
+  /* ---------- Eventos ---------- */
   spinBtn.addEventListener('click', spin);
+  spinAgainBtn.addEventListener('click', spin);
+  wheelEl.addEventListener('click', spin);
   shuffleBtn.addEventListener('click', shuffleCards);
-  modalClose.addEventListener('click', closeModal);
+  clearHistoryBtn.addEventListener('click', clearHistory);
+  modalClose.addEventListener('click', () => closeModal());
   modalBackdrop.addEventListener('click', (e) => {
     if (e.target === modalBackdrop) closeModal();
   });
 
-  buildWheel();
+  noRepeatToggle.addEventListener('change', () => { savePrefs(); refreshAfterChange(); });
+  soundToggle.addEventListener('change', savePrefs);
+
+  toggleGalleryBtn.addEventListener('click', () => {
+    const show = gallerySection.hidden;
+    gallerySection.hidden = !show;
+    toggleGalleryBtn.setAttribute('aria-expanded', String(show));
+    toggleGalleryBtn.textContent = show ? '🎴 Ocultar cartas' : '📚 Ver todas las cartas';
+    if (show) gallerySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  gallerySearch.addEventListener('input', filterGallery);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeModal(); return; }
+    const typing = ['INPUT', 'TEXTAREA', 'BUTTON'].includes(document.activeElement?.tagName);
+    if (e.code === 'Space' && !typing && !modalBackdrop.classList.contains('show')) {
+      e.preventDefault();
+      spin();
+    }
+  });
+
+  new ResizeObserver(resizeCanvas).observe(canvas);
+
   buildGallery();
+  renderHistory();
+  refreshAfterChange();
 </script>
 
 </body>
